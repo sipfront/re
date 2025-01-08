@@ -394,3 +394,10 @@ enum sdp_neg_state sipsess_sdp_neg_state(const struct sipsess *sess)
 {
 	return sess ? sess->neg_state : SDP_NEG_NONE;
 }
+
+bool sipsess_is_peerterm(const struct sipsess *sess)
+{
+    if (!sess)
+        return false;
+    return sess->peerterm;
+}
