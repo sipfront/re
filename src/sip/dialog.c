@@ -758,3 +758,13 @@ bool sip_dialog_cmp_half(const struct sip_dialog *dlg,
 
 	return true;
 }
+
+const char *dialog_ltag(const struct sip_dialog *dlg)
+{
+	return dlg ? dlg->ltag : NULL;
+}
+
+const char *dialog_rtag(const struct sip_dialog *dlg)
+{
+	return dlg ? dlg->rtag : NULL;
+}

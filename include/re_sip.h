@@ -458,3 +458,6 @@ int sip_uas_auth_print(struct re_printf *pf,
 		       const struct sip_uas_auth *auth);
 int sip_uas_auth_check(struct sip_uas_auth *auth, const struct sip_msg *msg,
 		       sip_uas_auth_h *authh, void *arg);
+
+const char *dialog_ltag(const struct sip_dialog *dlg);
+const char *dialog_rtag(const struct sip_dialog *dlg);
