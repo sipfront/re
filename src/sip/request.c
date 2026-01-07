@@ -855,6 +855,12 @@ int sip_requestf(struct sip_request **reqp, struct sip *sip, bool stateful,
 
 	err = mbuf_write_str(mb, "Max-Forwards: 70\r\n");
 
+	/* Add service-route headers for non-dialog requests */
+	if (sip->sr_route) {
+		err |= mbuf_write_mem(mb, mbuf_buf(sip->sr_route),
+				      mbuf_get_left(sip->sr_route));
+	}
+
 	if (auth)
 		err |= sip_auth_encode(mb, auth, met, uri);
 
