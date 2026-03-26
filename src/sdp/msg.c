@@ -359,11 +359,16 @@ static int media_encode(const struct sdp_media *m, struct mbuf *mb, bool offer)
 	struct le *le;
 	uint16_t port;
 
+	/* For answers, sup marks payloads compatible with the remote SDP.
+	 * For offers, local formats list what we propose; align_formats may
+	 * leave sup=false for codecs not in the previous remote SDP, but we
+	 * must still encode a valid offer (supc must reflect lfmtl count).
+	 */
 	for (le=m->lfmtl.head; le; le=le->next) {
 
 		const struct sdp_format *fmt = le->data;
 
-		if (fmt->sup)
+		if (offer || fmt->sup)
 			++supc;
 	}
 
