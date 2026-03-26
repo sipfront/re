@@ -232,7 +232,6 @@ static void target_refresh_handler(struct sipsess_sock *sock,
 	bool sdp;
 	struct sipsess *sess;
 	struct mbuf *desc = NULL;
-	char m[256];
 	int err;
 
 	sess = sipsess_find(sock, msg);
@@ -281,8 +280,7 @@ static void target_refresh_handler(struct sipsess_sock *sock,
 				  SDP_NEG_LOCAL_OFFER;
 		err = sess->offerh(&desc, msg, sess->arg);
 		if (err) {
-			(void)sip_reply(sip, msg, 488,
-					str_error(err, m, sizeof(m)));
+			(void)sip_reply(sip, msg, 488, "Not Acceptable Here");
 			sess->neg_state = SDP_NEG_DONE;
 			return;
 		}
