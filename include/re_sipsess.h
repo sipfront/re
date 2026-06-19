@@ -77,6 +77,7 @@ int  sipsess_modify(struct sipsess *sess, struct mbuf *desc);
 int  sipsess_info(struct sipsess *sess, const char *ctype, struct mbuf *body,
 		  sip_resp_h *resph, void *arg);
 int  sipsess_set_close_headers(struct sipsess *sess, const char *hdrs, ...);
+int  sipsess_set_hdrs(struct sipsess *sess, const char *fmt, ...);
 bool sipsess_awaiting_prack(const struct sipsess *sess);
 bool sipsess_refresh_allowed(const struct sipsess *sess);
 void sipsess_close_all(struct sipsess_sock *sock);
@@ -85,4 +86,7 @@ void sipsess_abort(struct sipsess *sess);
 bool sipsess_is_peerterm(const struct sipsess *sess);
 bool sipsess_ack_pending(const struct sipsess *sess);
 const struct sip_msg *sipsess_msg(const struct sipsess *sess);
+struct mbuf *sipsess_hdrs_detach(struct sipsess *sess);
+int  sipsess_mbuf_print(struct re_printf *pf, struct mbuf *mb);
+int  sipsess_hdrs_print(struct re_printf *pf, const struct sipsess *sess);
 enum sdp_neg_state sipsess_sdp_neg_state(const struct sipsess *sess);

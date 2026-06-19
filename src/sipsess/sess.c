@@ -314,6 +314,40 @@ int sipsess_set_close_headers(struct sipsess *sess, const char *hdrs, ...)
 
 
 /**
+ * Set extra SIP headers for session requests and responses
+ *
+ * @param sess      SIP Session
+ * @param fmt       Formatted strings with extra SIP Headers (NULL to clear)
+ *
+ * @return 0 if success, otherwise errorcode
+ */
+int sipsess_set_hdrs(struct sipsess *sess, const char *fmt, ...)
+{
+	va_list ap;
+	int err = 0;
+
+	if (!sess)
+		return EINVAL;
+
+	sess->hdrs = mem_deref(sess->hdrs);
+
+	if (!fmt)
+		return 0;
+
+	sess->hdrs = mbuf_alloc(256);
+	if (!sess->hdrs)
+		return ENOMEM;
+
+	va_start(ap, fmt);
+	err = mbuf_vprintf(sess->hdrs, fmt, ap);
+	sess->hdrs->pos = 0;
+	va_end(ap);
+
+	return err;
+}
+
+
+/**
  * Send BYE and terminate session (useful when ACK has not been received)
  *
  * @param sess      SIP Session
@@ -381,6 +415,38 @@ bool sipsess_ack_pending(const struct sipsess *sess)
 const struct sip_msg *sipsess_msg(const struct sipsess *sess)
 {
 	return sess ? sess->msg : NULL;
+}
+
+struct mbuf *sipsess_hdrs_detach(struct sipsess *sess)
+{
+	struct mbuf *hdrs;
+
+	if (!sess)
+		return NULL;
+
+	hdrs = sess->hdrs;
+	sess->hdrs = NULL;
+
+	return hdrs;
+}
+
+
+int sipsess_mbuf_print(struct re_printf *pf, struct mbuf *mb)
+{
+	if (!mb || !mbuf_get_left(mb))
+		return 0;
+
+	return re_hprintf(pf, "%b", mbuf_buf(mb), mbuf_get_left(mb));
+}
+
+
+int sipsess_hdrs_print(struct re_printf *pf, const struct sipsess *sess)
+{
+	if (!sess || !sess->hdrs || !mbuf_get_left(sess->hdrs))
+		return 0;
+
+	return re_hprintf(pf, "%b", mbuf_buf(sess->hdrs),
+			  mbuf_get_left(sess->hdrs));
 }
 
 /**

@@ -275,6 +275,20 @@ static void target_refresh_handler(struct sipsess_sock *sock,
 		return;
 	}
 
+	/* Bodyless UPDATE (e.g. RFC 4028 session refresh) must still run
+	 * the offer handler so modules can parse Session-Expires and attach
+	 * timer headers to the 200 OK. */
+	if (!is_invite && !sdp && sip_dialog_established(sess->dlg) &&
+	    sess->offerh) {
+		err = sess->offerh(&desc, msg, sess->arg);
+		if (err) {
+			(void)sip_reply(sip, msg, 488, "Not Acceptable Here");
+			return;
+		}
+		mem_deref(desc);
+		desc = NULL;
+	}
+
 	if (is_invite || sdp) {
 		sess->neg_state = sdp ? SDP_NEG_REMOTE_OFFER :
 				  SDP_NEG_LOCAL_OFFER;
@@ -289,6 +303,7 @@ static void target_refresh_handler(struct sipsess_sock *sock,
 	(void)sip_dialog_update(sess->dlg, msg);
 	(void)sipsess_reply_2xx(sess, msg, 200, "OK", desc,
 				NULL, NULL);
+	(void)sipsess_set_hdrs(sess, NULL);
 
 	/* pending modifications considered outdated;
 	   sdp may have changed in above exchange */

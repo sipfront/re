@@ -147,12 +147,15 @@ int sipsess_reply_2xx(struct sipsess *sess, const struct sip_msg *msg,
 			  msg, true, scode, reason,
 			  "%H"
 			  "%v"
+			  "%b"
 			  "%s%s%s"
 			  "Content-Length: %zu\r\n"
 			  "\r\n"
 			  "%b",
 			  sip_contact_print, &contact,
 			  fmt, ap,
+			  sess->hdrs ? mbuf_buf(sess->hdrs) : NULL,
+			  sess->hdrs ? mbuf_get_left(sess->hdrs) :(size_t)0,
 			  desc ? "Content-Type: " : "",
 			  desc ? sess->ctype : "",
 			  desc ? "\r\n" : "",

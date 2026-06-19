@@ -154,10 +154,13 @@ int sipsess_reinvite(struct sipsess *sess, bool reset_ls)
 	err = sip_drequestf(&sess->req, sess->sip, true, "INVITE",
 			    sess->dlg, 0, sess->auth,
 			    send_handler, reinvite_resp_handler, sess,
+			    "%b"
 			    "%s%s%s"
 			    "Content-Length: %zu\r\n"
 			    "\r\n"
 			    "%b",
+			    sess->hdrs ? mbuf_buf(sess->hdrs) : NULL,
+			    sess->hdrs ? mbuf_get_left(sess->hdrs) :(size_t)0,
 			    sess->desc ? "Content-Type: " : "",
 			    sess->desc ? sess->ctype : "",
 			    sess->desc ? "\r\n" : "",
