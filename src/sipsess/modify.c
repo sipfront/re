@@ -60,6 +60,10 @@ static void reinvite_resp_handler(int err, const struct sip_msg *msg,
 				goto out;
 		}
 
+		if (sess->sock && sess->sock->refresh_2xx_h)
+			sess->sock->refresh_2xx_h(sess, msg,
+						  sess->sock->hook_arg);
+
 		err = sipsess_ack(sess->sock, sess->dlg, msg->cseq.num,
 				  sess->auth, sess->ctype, desc);
 		if (err)

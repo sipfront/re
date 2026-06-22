@@ -182,6 +182,9 @@ int sipsess_answer(struct sipsess *sess, uint16_t scode, const char *reason,
 	if (!sess || !sess->st || !sess->msg || scode < 200 || scode > 299)
 		return EINVAL;
 
+	if (sess->sock && sess->sock->hdr_prep_h)
+		sess->sock->hdr_prep_h(sess, sess->sock->hook_arg);
+
 	va_start(ap, fmt);
 	err = sipsess_reply_2xx(sess, sess->msg, scode, reason, desc,
 				fmt, &ap);

@@ -50,6 +50,10 @@ static void update_resp_handler(int err, const struct sip_msg *msg, void *arg)
 			(void)req->sess->answerh(msg, req->sess->arg);
 			req->sess->neg_state = SDP_NEG_DONE;
 		}
+
+		if (req->sess->sock && req->sess->sock->refresh_2xx_h)
+			req->sess->sock->refresh_2xx_h(req->sess, msg,
+						       req->sess->sock->hook_arg);
 	}
 	else {
 		if (req->sess->terminated)

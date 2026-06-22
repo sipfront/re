@@ -417,6 +417,20 @@ const struct sip_msg *sipsess_msg(const struct sipsess *sess)
 	return sess ? sess->msg : NULL;
 }
 
+
+/**
+ * Get the application argument of a SIP Session
+ *
+ * @param sess  SIP Session
+ *
+ * @return Application argument
+ */
+void *sipsess_arg(const struct sipsess *sess)
+{
+	return sess ? sess->arg : NULL;
+}
+
+
 struct mbuf *sipsess_hdrs_detach(struct sipsess *sess)
 {
 	struct mbuf *hdrs;

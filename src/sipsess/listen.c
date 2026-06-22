@@ -300,6 +300,9 @@ static void target_refresh_handler(struct sipsess_sock *sock,
 		}
 	}
 
+	if (sip_dialog_established(sess->dlg) && sock->target_refresh_h)
+		sock->target_refresh_h(sess, msg, sock->hook_arg);
+
 	(void)sip_dialog_update(sess->dlg, msg);
 	(void)sipsess_reply_2xx(sess, msg, 200, "OK", desc,
 				NULL, NULL);
@@ -434,6 +437,48 @@ int sipsess_listen(struct sipsess_sock **sockp, struct sip *sip,
 		*sockp = sock;
 
 	return err;
+}
+
+
+/**
+ * Register optional session hooks (e.g. RFC 4028 session timers).
+ *
+ * @param sock            SIP Session socket
+ * @param hdr_prep        Called before UAS sends 2xx answer
+ * @param target_refresh  Called after offerh on peer UPDATE/re-INVITE
+ * @param refresh_2xx     Called on in-dialog UPDATE/re-INVITE 2xx
+ * @param arg             Handler argument
+ */
+void sipsess_sock_set_hooks(struct sipsess_sock *sock,
+			    sipsess_hdr_prep_h *hdr_prep,
+			    sipsess_target_refresh_h *target_refresh,
+			    sipsess_refresh_2xx_h *refresh_2xx,
+			    void *arg)
+{
+	if (!sock)
+		return;
+
+	sock->hdr_prep_h = hdr_prep;
+	sock->target_refresh_h = target_refresh;
+	sock->refresh_2xx_h = refresh_2xx;
+	sock->hook_arg = arg;
+}
+
+
+/**
+ * Unregister session hooks
+ *
+ * @param sock  SIP Session socket
+ */
+void sipsess_sock_unset_hooks(struct sipsess_sock *sock)
+{
+	if (!sock)
+		return;
+
+	sock->hdr_prep_h = NULL;
+	sock->target_refresh_h = NULL;
+	sock->refresh_2xx_h = NULL;
+	sock->hook_arg = NULL;
 }
 
 
