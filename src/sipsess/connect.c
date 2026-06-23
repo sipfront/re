@@ -250,10 +250,8 @@ static void invite_resp_handler(int err, const struct sip_msg *msg, void *arg)
 		case 401:
 		case 407:
 			err = sip_auth_authenticate(sess->auth, msg);
-			if (err) {
-				err = (err == EAUTH) ? 0 : err;
+			if (err)
 				break;
-			}
 
 			err = invite(sess);
 			if (err)

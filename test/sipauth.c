@@ -72,6 +72,68 @@ static int auth_handler(char **user, char **pass, const char *rlm, void *arg)
 }
 
 
+static int test_sip_auth_rechallenge(void)
+{
+	const char *challenge1 =
+		"SIP/2.0 407 Proxy Authentication Required\r\n"
+		"Proxy-Authenticate: Digest realm=\"example.net\", "
+		"algorithm=MD5, nonce=\"nonce-one\"\r\n"
+		"Content-Length: 0\r\n\r\n";
+	const char *challenge2 =
+		"SIP/2.0 407 Proxy Authentication Required\r\n"
+		"Proxy-Authenticate: Digest realm=\"example.net\", "
+		"algorithm=MD5, nonce=\"nonce-two\"\r\n"
+		"Content-Length: 0\r\n\r\n";
+	struct mbuf *mb = mbuf_alloc(512);
+	struct mbuf *mb_enc = mbuf_alloc(512);
+	struct sip_auth *auth = NULL;
+	struct sip_msg *msg = NULL;
+	char buf[512];
+	int err;
+
+	if (!mb || !mb_enc) {
+		err = ENOMEM;
+		goto out;
+	}
+
+	err = sip_auth_alloc(&auth, auth_handler, NULL, false);
+	TEST_ERR(err);
+
+	err = mbuf_write_str(mb, challenge1);
+	TEST_ERR(err);
+	mbuf_set_pos(mb, 0);
+	err = sip_msg_decode(&msg, mb);
+	TEST_ERR(err);
+	err = sip_auth_authenticate(auth, msg);
+	TEST_ERR(err);
+	mem_deref(msg);
+
+	mbuf_rewind(mb);
+	err = mbuf_write_str(mb, challenge2);
+	TEST_ERR(err);
+	mbuf_set_pos(mb, 0);
+	err = sip_msg_decode(&msg, mb);
+	TEST_ERR(err);
+	err = sip_auth_authenticate(auth, msg);
+	TEST_ERR(err);
+
+	err = sip_auth_encode(mb_enc, auth, "INVITE", "sip:user@host");
+	TEST_ERR(err);
+
+	mbuf_set_pos(mb_enc, 0);
+	mbuf_read_str(mb_enc, buf, mbuf_get_left(mb_enc));
+	err = re_regex(buf, str_len(buf), "algorithm=MD5");
+	TEST_ERR(err);
+
+out:
+	mem_deref(msg);
+	mem_deref(auth);
+	mem_deref(mb_enc);
+	mem_deref(mb);
+	return err;
+}
+
+
 static int test_sip_auth_encode(void)
 {
 	int err = 0;
@@ -140,6 +202,9 @@ int test_sip_auth(void)
 	int err;
 
 	err = test_sip_auth_encode();
+	TEST_ERR(err);
+
+	err = test_sip_auth_rechallenge();
 	TEST_ERR(err);
 
 out:
