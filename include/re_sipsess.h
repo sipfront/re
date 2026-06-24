@@ -31,7 +31,15 @@ typedef void (sipsess_refer_h)(struct sip *sip, const struct sip_msg *msg,
 			       void *arg);
 typedef void (sipsess_close_h)(int err, const struct sip_msg *msg, void *arg);
 
-typedef void (sipsess_hdr_prep_h)(struct sipsess *sess, void *arg);
+/**
+ * Prepare UAS answer headers, optionally rejecting the request.
+ *
+ * Return value:
+ *   - 0: continue with normal 2xx answer
+ *   - >=300: send a final non-2xx response with that status code and
+ *            abort the 2xx answer
+ */
+typedef int (sipsess_hdr_prep_h)(struct sipsess *sess, void *arg);
 typedef void (sipsess_target_refresh_h)(struct sipsess *sess,
 					const struct sip_msg *msg, void *arg);
 typedef void (sipsess_refresh_2xx_h)(struct sipsess *sess,
