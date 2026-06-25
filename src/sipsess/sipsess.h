@@ -57,6 +57,7 @@ struct sipsess_sock {
 	sipsess_hdr_prep_h *hdr_prep_h;
 	sipsess_target_refresh_h *target_refresh_h;
 	sipsess_refresh_2xx_h *refresh_2xx_h;
+	sipsess_422_h *resp422_h;
 	void *hook_arg;
 };
 

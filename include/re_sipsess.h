@@ -45,6 +45,14 @@ typedef void (sipsess_target_refresh_h)(struct sipsess *sess,
 typedef void (sipsess_refresh_2xx_h)(struct sipsess *sess,
 				      const struct sip_msg *msg, void *arg);
 
+/**
+ * Process a 422 (Session Interval Too Small) response on UAC requests.
+ *
+ * @return 0 to retry the request with updated headers, otherwise errorcode
+ */
+typedef int (sipsess_422_h)(struct sipsess *sess, const struct sip_msg *msg,
+			    void *arg);
+
 typedef void (sipsess_redirect_h)(const struct sip_msg *msg,
 				  const char *uri, void *arg);
 typedef void (sipsess_prack_h)(const struct sip_msg *msg, void *arg);
@@ -55,6 +63,7 @@ void sipsess_sock_set_hooks(struct sipsess_sock *sock,
 			    sipsess_hdr_prep_h *hdr_prep,
 			    sipsess_target_refresh_h *target_refresh,
 			    sipsess_refresh_2xx_h *refresh_2xx,
+			    sipsess_422_h *resp422,
 			    void *arg);
 void sipsess_sock_unset_hooks(struct sipsess_sock *sock);
 

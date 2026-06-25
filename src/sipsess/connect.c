@@ -22,6 +22,15 @@
 static int invite(struct sipsess *sess);
 
 
+static void invite_retry_handler(void *arg)
+{
+	struct sipsess *sess = arg;
+
+	(void)invite(sess);
+	mem_deref(sess);
+}
+
+
 static int send_handler(enum sip_transp tp, struct sa *src,
 			const struct sa *dst, struct mbuf *mb,
 			struct mbuf **contp, void *arg)
@@ -258,6 +267,19 @@ static void invite_resp_handler(int err, const struct sip_msg *msg, void *arg)
 				break;
 
 			return;
+
+		case 422:
+			if (sess->sock && sess->sock->resp422_h) {
+				err = sess->sock->resp422_h(sess, msg,
+							    sess->sock->hook_arg);
+				if (!err) {
+					tmr_start(&sess->tmr, 1,
+						  invite_retry_handler,
+						  mem_ref(sess));
+					return;
+				}
+			}
+			break;
 		}
 	}
 

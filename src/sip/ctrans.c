@@ -457,6 +457,38 @@ static bool debug_handler(struct le *le, void *arg)
 }
 
 
+/**
+ * Send ACK for a non-2xx final INVITE response (RFC 3261 §17.1.1.2)
+ *
+ * @param sip   SIP stack
+ * @param resp  Final INVITE response (e.g. 422)
+ *
+ * @return 0 if success, otherwise errorcode
+ */
+int sip_ctrans_invite_ack(struct sip *sip, const struct sip_msg *resp)
+{
+	struct sip_ctrans *ct;
+	int err;
+
+	if (!sip || !resp || resp->req || resp->scode < 300)
+		return EINVAL;
+
+	ct = list_ledata(hash_lookup(sip->ht_ctrans,
+				     hash_joaat_pl(&resp->via.branch),
+				     cmp_handler, (void *)resp));
+	if (!ct || !ct->invite)
+		return ENOENT;
+
+	if (!ct->mb_ack) {
+		err = request_copy(&ct->mb_ack, ct, "ACK", resp);
+		if (err)
+			return err;
+	}
+
+	return sip_send(sip, NULL, ct->tp, &ct->dst, ct->mb_ack);
+}
+
+
 int sip_ctrans_debug(struct re_printf *pf, const struct sip *sip)
 {
 	int err;

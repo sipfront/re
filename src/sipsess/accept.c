@@ -78,8 +78,12 @@ static int reject_from_hdr_prep(struct sipsess *sess, int pre)
 	if (pre == 422)
 		r = "Session Interval Too Small";
 
+	/* Stateless final response must end headers with CRLFCRLF */
 	err = sipsess_reject(sess, (uint16_t)pre, r,
-			     "%H", sipsess_hdrs_print, sess);
+			     "%H"
+			     "Content-Length: 0\r\n"
+			     "\r\n",
+			     sipsess_hdrs_print, sess);
 	(void)sipsess_set_hdrs(sess, NULL);
 	if (!err)
 		hash_unlink(&sess->he);

@@ -75,6 +75,18 @@ static void update_resp_handler(int err, const struct sip_msg *msg, void *arg)
 
 			return;
 
+		case 422:
+			if (req->sess->sock && req->sess->sock->resp422_h) {
+				err = req->sess->sock->resp422_h(req->sess, msg,
+					req->sess->sock->hook_arg);
+				if (!err) {
+					err = update_request(req);
+					if (!err)
+						return;
+				}
+			}
+			break;
+
 		case 408:
 		case 481:
 			sipsess_terminate(req->sess, 0, msg);

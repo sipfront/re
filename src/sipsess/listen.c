@@ -447,12 +447,14 @@ int sipsess_listen(struct sipsess_sock **sockp, struct sip *sip,
  * @param hdr_prep        Called before UAS sends 2xx answer
  * @param target_refresh  Called after offerh on peer UPDATE/re-INVITE
  * @param refresh_2xx     Called on in-dialog UPDATE/re-INVITE 2xx
+ * @param resp422         Called on 422; return 0 to retry the request
  * @param arg             Handler argument
  */
 void sipsess_sock_set_hooks(struct sipsess_sock *sock,
 			    sipsess_hdr_prep_h *hdr_prep,
 			    sipsess_target_refresh_h *target_refresh,
 			    sipsess_refresh_2xx_h *refresh_2xx,
+			    sipsess_422_h *resp422,
 			    void *arg)
 {
 	if (!sock)
@@ -461,6 +463,7 @@ void sipsess_sock_set_hooks(struct sipsess_sock *sock,
 	sock->hdr_prep_h = hdr_prep;
 	sock->target_refresh_h = target_refresh;
 	sock->refresh_2xx_h = refresh_2xx;
+	sock->resp422_h = resp422;
 	sock->hook_arg = arg;
 }
 
@@ -478,6 +481,7 @@ void sipsess_sock_unset_hooks(struct sipsess_sock *sock)
 	sock->hdr_prep_h = NULL;
 	sock->target_refresh_h = NULL;
 	sock->refresh_2xx_h = NULL;
+	sock->resp422_h = NULL;
 	sock->hook_arg = NULL;
 }
 

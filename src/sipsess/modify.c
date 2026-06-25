@@ -18,6 +18,15 @@
 #include "sipsess.h"
 
 
+static void reinvite_retry_handler(void *arg)
+{
+	struct sipsess *sess = arg;
+
+	(void)sipsess_reinvite(sess, false);
+	mem_deref(sess);
+}
+
+
 static void tmr_handler(void *arg)
 {
 	struct sipsess *sess = arg;
@@ -94,6 +103,19 @@ static void reinvite_resp_handler(int err, const struct sip_msg *msg,
 				break;
 
 			return;
+
+		case 422:
+			if (sess->sock && sess->sock->resp422_h) {
+				err = sess->sock->resp422_h(sess, msg,
+							    sess->sock->hook_arg);
+				if (!err) {
+					tmr_start(&sess->tmr, 1,
+						  reinvite_retry_handler,
+						  mem_ref(sess));
+					return;
+				}
+			}
+			break;
 
 		case 408:
 		case 481:
