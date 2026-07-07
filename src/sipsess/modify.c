@@ -18,6 +18,15 @@
 #include "sipsess.h"
 
 
+static void reinvite_retry_handler(void *arg)
+{
+	struct sipsess *sess = arg;
+
+	(void)sipsess_reinvite(sess, false);
+	mem_deref(sess);
+}
+
+
 static void tmr_handler(void *arg)
 {
 	struct sipsess *sess = arg;
@@ -60,6 +69,10 @@ static void reinvite_resp_handler(int err, const struct sip_msg *msg,
 				goto out;
 		}
 
+		if (sess->sock && sess->sock->refresh_2xx_h)
+			sess->sock->refresh_2xx_h(sess, msg,
+						  sess->sock->hook_arg);
+
 		err = sipsess_ack(sess->sock, sess->dlg, msg->cseq.num,
 				  sess->auth, sess->ctype, desc);
 		if (err)
@@ -82,16 +95,27 @@ static void reinvite_resp_handler(int err, const struct sip_msg *msg,
 		case 401:
 		case 407:
 			err = sip_auth_authenticate(sess->auth, msg);
-			if (err) {
-				err = (err == EAUTH) ? 0 : err;
+			if (err)
 				break;
-			}
 
 			err = sipsess_reinvite(sess, false);
 			if (err)
 				break;
 
 			return;
+
+		case 422:
+			if (sess->sock && sess->sock->resp422_h) {
+				err = sess->sock->resp422_h(sess, msg,
+							    sess->sock->hook_arg);
+				if (!err) {
+					tmr_start(&sess->tmr, 1,
+						  reinvite_retry_handler,
+						  mem_ref(sess));
+					return;
+				}
+			}
+			break;
 
 		case 408:
 		case 481:
@@ -154,10 +178,13 @@ int sipsess_reinvite(struct sipsess *sess, bool reset_ls)
 	err = sip_drequestf(&sess->req, sess->sip, true, "INVITE",
 			    sess->dlg, 0, sess->auth,
 			    send_handler, reinvite_resp_handler, sess,
+			    "%b"
 			    "%s%s%s"
 			    "Content-Length: %zu\r\n"
 			    "\r\n"
 			    "%b",
+			    sess->hdrs ? mbuf_buf(sess->hdrs) : NULL,
+			    sess->hdrs ? mbuf_get_left(sess->hdrs) :(size_t)0,
 			    sess->desc ? "Content-Type: " : "",
 			    sess->desc ? sess->ctype : "",
 			    sess->desc ? "\r\n" : "",

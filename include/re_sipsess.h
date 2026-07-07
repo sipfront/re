@@ -31,12 +31,41 @@ typedef void (sipsess_refer_h)(struct sip *sip, const struct sip_msg *msg,
 			       void *arg);
 typedef void (sipsess_close_h)(int err, const struct sip_msg *msg, void *arg);
 
+/**
+ * Prepare UAS answer headers, optionally rejecting the request.
+ *
+ * Return value:
+ *   - 0: continue with normal 2xx answer
+ *   - >=300: send a final non-2xx response with that status code and
+ *            abort the 2xx answer
+ */
+typedef int (sipsess_hdr_prep_h)(struct sipsess *sess, void *arg);
+typedef void (sipsess_target_refresh_h)(struct sipsess *sess,
+					const struct sip_msg *msg, void *arg);
+typedef void (sipsess_refresh_2xx_h)(struct sipsess *sess,
+				      const struct sip_msg *msg, void *arg);
+
+/**
+ * Process a 422 (Session Interval Too Small) response on UAC requests.
+ *
+ * @return 0 to retry the request with updated headers, otherwise errorcode
+ */
+typedef int (sipsess_422_h)(struct sipsess *sess, const struct sip_msg *msg,
+			    void *arg);
+
 typedef void (sipsess_redirect_h)(const struct sip_msg *msg,
 				  const char *uri, void *arg);
 typedef void (sipsess_prack_h)(const struct sip_msg *msg, void *arg);
 
 int  sipsess_listen(struct sipsess_sock **sockp, struct sip *sip,
 		    int htsize, sipsess_conn_h *connh, void *arg);
+void sipsess_sock_set_hooks(struct sipsess_sock *sock,
+			    sipsess_hdr_prep_h *hdr_prep,
+			    sipsess_target_refresh_h *target_refresh,
+			    sipsess_refresh_2xx_h *refresh_2xx,
+			    sipsess_422_h *resp422,
+			    void *arg);
+void sipsess_sock_unset_hooks(struct sipsess_sock *sock);
 
 int  sipsess_connect(struct sipsess **sessp, struct sipsess_sock *sock,
 		     const char *to_uri, const char *from_name,
@@ -77,6 +106,7 @@ int  sipsess_modify(struct sipsess *sess, struct mbuf *desc);
 int  sipsess_info(struct sipsess *sess, const char *ctype, struct mbuf *body,
 		  sip_resp_h *resph, void *arg);
 int  sipsess_set_close_headers(struct sipsess *sess, const char *hdrs, ...);
+int  sipsess_set_hdrs(struct sipsess *sess, const char *fmt, ...);
 bool sipsess_awaiting_prack(const struct sipsess *sess);
 bool sipsess_refresh_allowed(const struct sipsess *sess);
 void sipsess_close_all(struct sipsess_sock *sock);
@@ -85,4 +115,8 @@ void sipsess_abort(struct sipsess *sess);
 bool sipsess_is_peerterm(const struct sipsess *sess);
 bool sipsess_ack_pending(const struct sipsess *sess);
 const struct sip_msg *sipsess_msg(const struct sipsess *sess);
+void *sipsess_arg(const struct sipsess *sess);
+struct mbuf *sipsess_hdrs_detach(struct sipsess *sess);
+int  sipsess_mbuf_print(struct re_printf *pf, struct mbuf *mb);
+int  sipsess_hdrs_print(struct re_printf *pf, const struct sipsess *sess);
 enum sdp_neg_state sipsess_sdp_neg_state(const struct sipsess *sess);

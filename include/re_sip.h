@@ -349,6 +349,7 @@ void sip_request_cancel(struct sip_request *req);
 bool sip_request_loops(struct sip_loopstate *ls, uint16_t scode);
 void sip_loopstate_reset(struct sip_loopstate *ls);
 bool sip_request_provrecv(const struct sip_request *req);
+int  sip_ctrans_invite_ack(struct sip *sip, const struct sip_msg *resp);
 
 
 /* reply */

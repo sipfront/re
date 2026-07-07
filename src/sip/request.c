@@ -1032,6 +1032,7 @@ bool sip_request_loops(struct sip_loopstate *ls, uint16_t scode)
 			/*@fallthrough@*/
 		case 401:
 		case 407:
+		case 422:
 		case 491:
 			if (++ls->failc >= 16)
 				loop = true;

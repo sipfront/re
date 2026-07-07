@@ -204,17 +204,23 @@ static bool auth_handler(const struct sip_hdr *hdr, const struct sip_msg *msg,
 		if (err)
 			goto out;
 
-		err = pl_strdup(&realm->algorithm, &ch.algorithm);
-		if (err)
-			goto out;
-
 		err = auth->authh(&realm->user, &realm->pass,
 				  realm->realm, auth->arg);
 		if (err)
 			goto out;
 	}
 	else {
-		if (!pl_isset(&ch.stale) || pl_strcasecmp(&ch.stale, "true")) {
+		struct pl oldnonce;
+		bool update = false;
+
+		pl_set_str(&oldnonce, realm->nonce);
+
+		if (pl_isset(&ch.stale) && !pl_strcasecmp(&ch.stale, "true"))
+			update = true;
+		else if (pl_isset(&ch.nonce) && pl_strcmp(&ch.nonce, &oldnonce))
+			update = true;
+
+		if (!update) {
 			err = EAUTH;
 			goto out;
 		}
@@ -235,6 +241,8 @@ static bool auth_handler(const struct sip_hdr *hdr, const struct sip_msg *msg,
 
 	if (pl_isset(&ch.opaque))
 		err |= pl_strdup(&realm->opaque, &ch.opaque);
+
+	err |= pl_strdup(&realm->algorithm, &ch.algorithm);
 
 out:
 	if (err) {
@@ -325,7 +333,9 @@ int sip_auth_encode(struct mbuf *mb, struct sip_auth *auth, const char *met,
 
 		++realm->nc;
 
-		err |= mbuf_printf(mb, ", algorithm=%s", realm->algorithm);
+		if (str_isset(realm->algorithm))
+			err |= mbuf_printf(mb, ", algorithm=%s", realm->algorithm);
+
 		err |= mbuf_write_str(mb, "\r\n");
 		if (err)
 			break;

@@ -35,6 +35,63 @@ static void cancel_handler(void *arg)
 }
 
 
+static bool unest_callid_cmp(struct le *le, void *arg)
+{
+	const struct sipsess *sess = le->data;
+	const struct pl *callid = arg;
+	const char *cid;
+
+	if (sess->established)
+		return false;
+
+	cid = sip_dialog_callid(sess->dlg);
+	if (!cid)
+		return false;
+
+	return !pl_strcmp(callid, cid);
+}
+
+
+static void discard_unestablished(struct sipsess_sock *sock,
+				  const struct pl *callid)
+{
+	struct le *le;
+
+	while ((le = hash_lookup(sock->ht_sess, hash_joaat_pl(callid),
+				unest_callid_cmp, (void *)callid))) {
+		struct sipsess *sess = le->data;
+
+		hash_unlink(&sess->he);
+		if (sess->st && !sess->terminated)
+			(void)sip_treply(&sess->st, sess->sip, sess->msg,
+					 487, "Request Terminated");
+		mem_deref(sess);
+	}
+}
+
+
+static int reject_from_hdr_prep(struct sipsess *sess, int pre)
+{
+	int err;
+	const char *r = "Rejected";
+
+	if (pre == 422)
+		r = "Session Interval Too Small";
+
+	/* Stateless final response must end headers with CRLFCRLF */
+	err = sipsess_reject(sess, (uint16_t)pre, r,
+			     "%H"
+			     "Content-Length: 0\r\n"
+			     "\r\n",
+			     sipsess_hdrs_print, sess);
+	(void)sipsess_set_hdrs(sess, NULL);
+	if (!err)
+		hash_unlink(&sess->he);
+
+	return err ? err : EPROTO;
+}
+
+
 /**
  * Accept an incoming SIP Session connection
  *
@@ -79,6 +136,8 @@ int sipsess_accept(struct sipsess **sessp, struct sipsess_sock *sock,
 	    !cuser || !ctype)
 		return EINVAL;
 
+	discard_unestablished(sock, &msg->callid);
+
 	err = sipsess_alloc(&sess, sock, cuser, ctype, NULL, authh, aarg, aref,
 			    NULL, offerh, answerh, NULL, estabh, infoh, referh,
 			    closeh, arg);
@@ -102,6 +161,19 @@ int sipsess_accept(struct sipsess **sessp, struct sipsess_sock *sock,
 
 	if (mbuf_get_left(msg->mb))
 		sess->neg_state = SDP_NEG_REMOTE_OFFER;
+
+	if (sess->sock && sess->sock->hdr_prep_h) {
+		const int pre = sess->sock->hdr_prep_h(sess,
+						      sess->sock->hook_arg);
+		if (pre >= 300) {
+			err = reject_from_hdr_prep(sess, pre);
+			goto out;
+		}
+		else if (pre) {
+			err = pre;
+			goto out;
+		}
+	}
 
 	va_start(ap, fmt);
 
@@ -181,6 +253,15 @@ int sipsess_answer(struct sipsess *sess, uint16_t scode, const char *reason,
 
 	if (!sess || !sess->st || !sess->msg || scode < 200 || scode > 299)
 		return EINVAL;
+
+	if (sess->sock && sess->sock->hdr_prep_h) {
+		const int pre = sess->sock->hdr_prep_h(sess,
+						      sess->sock->hook_arg);
+		if (pre >= 300)
+			return reject_from_hdr_prep(sess, pre);
+		else if (pre)
+			return pre;
+	}
 
 	va_start(ap, fmt);
 	err = sipsess_reply_2xx(sess, sess->msg, scode, reason, desc,

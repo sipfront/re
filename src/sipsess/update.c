@@ -50,6 +50,10 @@ static void update_resp_handler(int err, const struct sip_msg *msg, void *arg)
 			(void)req->sess->answerh(msg, req->sess->arg);
 			req->sess->neg_state = SDP_NEG_DONE;
 		}
+
+		if (req->sess->sock && req->sess->sock->refresh_2xx_h)
+			req->sess->sock->refresh_2xx_h(req->sess, msg,
+						       req->sess->sock->hook_arg);
 	}
 	else {
 		if (req->sess->terminated)
@@ -62,16 +66,26 @@ static void update_resp_handler(int err, const struct sip_msg *msg, void *arg)
 		case 401:
 		case 407:
 			err = sip_auth_authenticate(req->sess->auth, msg);
-			if (err) {
-				err = (err == EAUTH) ? 0 : err;
+			if (err)
 				break;
-			}
 
 			err = update_request(req);
 			if (err)
 				break;
 
 			return;
+
+		case 422:
+			if (req->sess->sock && req->sess->sock->resp422_h) {
+				err = req->sess->sock->resp422_h(req->sess, msg,
+					req->sess->sock->hook_arg);
+				if (!err) {
+					err = update_request(req);
+					if (!err)
+						return;
+				}
+			}
+			break;
 
 		case 408:
 		case 481:
