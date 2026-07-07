@@ -213,6 +213,9 @@ static void response_handler(int err, const struct sip_msg *msg, void *arg)
 		reg->wait *= reg->rwait * (1000 / 100);
 		reg->failc = 0;
 
+		/* Update service-route headers from 2XX registration response */
+		(void)sip_service_route_update(reg->sip, msg);
+
 		if (reg->regid > 0 && !reg->terminated && !reg->ka)
 			start_outbound(reg, msg);
 		goto out;
