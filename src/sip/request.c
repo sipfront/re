@@ -198,6 +198,16 @@ static int connect_handler(struct sa *src, const struct sa *dst,
 
 	mb->pos = 0;
 
+	/* sipsess ACK send_handler refs mbs for sipsess_ack_again, but mbs is
+	 * only the mid-header scratch pad. Copy the datagram we actually send
+	 * so 2xx ACK retransmission (RFC 3261 §13.2.2.4) is a real ACK. */
+	if (mem_nrefs(mbs) > 1) {
+		mbs->pos = 0;
+		mbs->end = 0;
+		err |= mbuf_write_mem(mbs, mbuf_buf(mb), mbuf_get_left(mb));
+		mbs->pos = 0;
+	}
+
 out:
 	if (err)
 		mbuf_reset(mb);
