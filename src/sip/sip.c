@@ -82,10 +82,68 @@ static void destructor(void *arg)
 	list_flush(&sip->lsnrl);
 
 	mem_deref(sip->software);
+	mem_deref(sip->sr_route);
 	mem_deref(sip->dnsc);
 	mem_deref(sip->stun);
 
 	mem_deref(sip->websock);
+}
+
+
+static bool service_route_hdr_handler(const struct sip_hdr *hdr,
+				      const struct sip_msg *msg, void *arg)
+{
+	struct mbuf *mb = arg;
+	(void)msg;
+
+	return mbuf_printf(mb, "Route: %r\r\n", &hdr->val) ? true : false;
+}
+
+
+int sip_service_route_update(struct sip *sip, const struct sip_msg *msg)
+{
+	struct mbuf *mb;
+	int err = 0;
+
+	if (!sip || !msg)
+		return EINVAL;
+
+	if (!sip_msg_hdr_count(msg, SIP_HDR_SERVICE_ROUTE))
+		return 0;
+
+	mb = mbuf_alloc(256);
+	if (!mb)
+		return ENOMEM;
+
+	if (sip_msg_hdr_apply(msg, true, SIP_HDR_SERVICE_ROUTE,
+			      service_route_hdr_handler, mb))
+		err = ENOMEM;
+
+	if (!err) {
+		mb->pos = 0;
+		mem_deref(sip->sr_route);
+		sip->sr_route = mem_ref(mb);
+	}
+
+	mem_deref(mb);
+	return err;
+}
+
+
+int sip_service_route_get(struct sip *sip, const uint8_t **bufp, size_t *lenp)
+{
+	if (!sip || !bufp || !lenp)
+		return EINVAL;
+
+	if (!sip->sr_route) {
+		*bufp = NULL;
+		*lenp = 0;
+		return 0;
+	}
+
+	*bufp = mbuf_buf(sip->sr_route);
+	*lenp = mbuf_get_left(sip->sr_route);
+	return 0;
 }
 
 

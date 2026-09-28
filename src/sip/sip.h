@@ -19,6 +19,7 @@ struct sip {
 	struct stun *stun;
 	struct websock *websock;
 	char *software;
+	struct mbuf *sr_route;
 	sip_exit_h *exith;
 	sip_trace_h *traceh;
 	void *arg;
@@ -88,6 +89,10 @@ int  sip_dialog_encode(struct mbuf *mb, struct sip_dialog *dlg, uint32_t cseq,
 		       const char *met);
 const struct uri *sip_dialog_route(const struct sip_dialog *dlg);
 uint32_t sip_dialog_hash(const struct sip_dialog *dlg);
+
+/* service-route */
+int sip_service_route_update(struct sip *sip, const struct sip_msg *msg);
+int sip_service_route_get(struct sip *sip, const uint8_t **bufp, size_t *lenp);
 
 
 /* keepalive */
