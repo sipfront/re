@@ -44,6 +44,12 @@ static bool unest_callid_cmp(struct le *le, void *arg)
 	if (sess->established)
 		return false;
 
+	/* Only incoming sessions: an outgoing session of the same process
+	 * shares the Call-ID when it calls itself and must not be discarded
+	 * (SIT-473). */
+	if (sess->owner)
+		return false;
+
 	cid = sip_dialog_callid(sess->dlg);
 	if (!cid)
 		return false;
